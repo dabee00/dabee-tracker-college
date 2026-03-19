@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import AssignmentsPage from './components/AssignmentsPage';
 import PITPage from './components/PITPage';
 import CalendarPage from './components/CalendarPage';
 
-
-function App() {
+const App = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [assignments, setAssignments] = useState([]);
   const [pits, setPits] = useState([]);
@@ -63,6 +62,7 @@ function App() {
       </main>
     </div>
   );
-}
+};
 
 export default App;
+
