@@ -24,7 +24,21 @@ import {
   StickyNote,
   Trash2,
 } from 'lucide-react';
-import { subjectColors } from '../data/initialData';
+const subjectColors = {
+  default: "#3b82f6"
+};
+
+const subjectOptions = [
+  'CpE321-Basic Occuupational Health and Safety',
+  'CpE322-Digital Signal Processing',
+  'CpE323-Microprocessor',
+  'CpE324-CpE Practice and Design 1',
+  'CpE325-CpE laws and Professional Practice',
+  'CpE326-Emerging Technologies in CpE',
+  'ES302-Engineering Management',
+  'PICPE-Philippine Indigenous Communities and Peace Education',
+  'EC321-CpE Elective Course 2',
+];
 
 const quizTypeConfig = {
   short_quiz: { label: 'Short Quiz', bg: 'bg-sky-100', text: 'text-sky-700' },
@@ -33,7 +47,6 @@ const quizTypeConfig = {
 };
 
 const emptyForm = {
-  title: '',
   subject: '',
   date: '',
   time: '8:00 AM',
@@ -41,7 +54,7 @@ const emptyForm = {
   notes: '',
 };
 
-export default function CalendarPage({ quizzes, setQuizzes }) {
+export default function CalendarPage({ quizzes, setQuizzes, addQuiz, updateQuiz, deleteQuiz }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -81,7 +94,6 @@ export default function CalendarPage({ quizzes, setQuizzes }) {
 
   const handleEdit = (q) => {
     setForm({
-      title: q.title,
       subject: q.subject,
       date: q.date,
       time: q.time,
@@ -92,33 +104,48 @@ export default function CalendarPage({ quizzes, setQuizzes }) {
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     setQuizzes((prev) => prev.filter((q) => q.id !== id));
+    try {
+      if (deleteQuiz) await deleteQuiz(id);
+    } catch (err) {
+      console.error('Quiz delete error:', err);
+    }
     if (selectedDate && getQuizzesForDate(selectedDate).length <= 1) {
       // keep selectedDate
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      setQuizzes((prev) =>
-        prev.map((q) =>
-          q.id === editingId
-            ? { ...q, ...form, color: subjectColors[form.subject] || '#3b82f6' }
-            : q
-        )
-      );
-    } else {
-      setQuizzes((prev) => [
-        ...prev,
-        {
-          ...form,
-          id: Date.now(),
-          color: subjectColors[form.subject] || '#3b82f6',
-        },
-      ]);
+
+    const payload = {
+      ...form,
+      color: subjectColors[form.subject] || '#3b82f6',
+      createdAt: new Date(),
+    };
+
+    try {
+      if (editingId) {
+        setQuizzes((prev) =>
+          prev.map((q) =>
+            q.id === editingId
+              ? { ...q, ...payload }
+              : q
+          )
+        );
+        if (updateQuiz) await updateQuiz(editingId, payload);
+      } else {
+        setQuizzes((prev) => [
+          ...prev,
+          { ...payload, id: Date.now() },
+        ]);
+        if (addQuiz) await addQuiz(payload);
+      }
+    } catch (err) {
+      console.error('Quiz write error:', err);
     }
+
     setShowModal(false);
     setForm(emptyForm);
     setEditingId(null);
@@ -238,9 +265,9 @@ export default function CalendarPage({ quizzes, setQuizzes }) {
                                 key={qi}
                                 className="text-xs px-1.5 py-0.5 rounded-md text-white font-medium truncate"
                                 style={{ backgroundColor: q.color }}
-                                title={q.title}
+                                title={q.subject}
                               >
-                                {q.title.length > 12 ? q.title.substring(0, 12) + '…' : q.title}
+                                {q.subject?.length > 12 ? q.subject.substring(0, 12) + '…' : q.subject}
                               </div>
                             ))}
                             {dayQuizzes.length > 3 && (
@@ -291,7 +318,7 @@ export default function CalendarPage({ quizzes, setQuizzes }) {
                             <BookOpen className="w-5 h-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-800 text-sm">{q.title}</p>
+                            <p className="font-semibold text-slate-800 text-sm">{q.subject}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${qType.bg} ${qType.text}`}>
                                 {qType.label}
@@ -371,7 +398,7 @@ export default function CalendarPage({ quizzes, setQuizzes }) {
                           <span className="text-xs leading-none opacity-80">{format(parseISO(q.date), 'MMM').slice(0, 3)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-700 truncate">{q.title}</p>
+                          <p className="text-sm font-semibold text-slate-700 truncate">{q.subject}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className={`text-xs px-1.5 py-0.5 rounded-full ${qType.bg} ${qType.text}`}>
                               {qType.label}
@@ -410,28 +437,24 @@ export default function CalendarPage({ quizzes, setQuizzes }) {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1">Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Quiz or exam title..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
-                />
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-slate-700 block mb-1">Subject *</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    placeholder="e.g. Mathematics, Science"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
-                  />
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white"
+                  >
+                    <option value="" disabled>
+                      Select a subject
+                    </option>
+                    {subjectOptions.map((subject) => (
+                      <option key={subject} value={subject}>
+                        {subject}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700 block mb-1">Type</label>

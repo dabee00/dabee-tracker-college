@@ -12,7 +12,21 @@ import {
   Edit3,
   Trash2,
 } from 'lucide-react';
-import { subjectColors } from '../data/initialData';
+const subjectColors = {
+  default: "#8b5cf6"
+};
+
+const subjectOptions = [
+  'CpE321-Basic Occuupational Health and Safety',
+  'CpE322-Digital Signal Processing',
+  'CpE323-Microprocessor',
+  'CpE324-CpE Practice and Design 1',
+  'CpE325-CpE laws and Professional Practice',
+  'CpE326-Emerging Technologies in CpE',
+  'ES302-Engineering Management',
+  'PICPE-Philippine Indigenous Communities and Peace Education',
+  'EC321-CpE Elective Course 2',
+];
 
 const statusConfig = {
   pending: { label: 'Pending', bg: 'bg-slate-100', text: 'text-slate-600', icon: Clock },
@@ -30,50 +44,53 @@ const emptyForm = {
   team: '',
 };
 
-export default function PITPage({ pits, setPits }) {
+export default function PITPage({ pits, setPits, addPIT, updatePIT, deletePIT }) {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const teamArr = form.team
       ? form.team.split(',').map((t) => t.trim()).filter(Boolean)
       : ['You'];
     if (!teamArr.includes('You')) teamArr.unshift('You');
 
-    if (editingId) {
-      setPits((prev) =>
-        prev.map((p) =>
-          p.id === editingId
-            ? {
-                ...p,
-                ...form,
-                team: teamArr,
-                color: subjectColors[form.subject] || '#8b5cf6',
-                progress: Number(form.progress),
-              }
-            : p
-        )
-      );
-    } else {
-      setPits((prev) => [
-        ...prev,
-        {
-          ...form,
-          id: Date.now(),
-          team: teamArr,
-          color: subjectColors[form.subject] || '#8b5cf6',
-          progress: Number(form.progress),
-          criteria: [
-            { label: 'Content & Research', score: 35 },
-            { label: 'Creativity', score: 30 },
-            { label: 'Presentation', score: 35 },
-          ],
-        },
-      ]);
+    const pitPayload = {
+      ...form,
+      team: teamArr,
+      color: subjectColors[form.subject] || '#8b5cf6',
+      progress: Number(form.progress),
+      criteria: [
+        { label: 'Content & Research', score: 35 },
+        { label: 'Creativity', score: 30 },
+        { label: 'Presentation', score: 35 },
+      ],
+      createdAt: new Date(),
+    };
+
+    try {
+      if (editingId) {
+        setPits((prev) =>
+          prev.map((p) =>
+            p.id === editingId
+              ? { ...p, ...pitPayload }
+              : p
+          )
+        );
+        if (updatePIT) await updatePIT(editingId, pitPayload);
+      } else {
+        setPits((prev) => [
+          ...prev,
+          { ...pitPayload, id: Date.now() },
+        ]);
+        if (addPIT) await addPIT(pitPayload);
+      }
+    } catch (err) {
+      console.error('PIT write error:', err);
     }
+
     setShowModal(false);
     setForm(emptyForm);
     setEditingId(null);
@@ -93,8 +110,13 @@ export default function PITPage({ pits, setPits }) {
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     setPits((prev) => prev.filter((p) => p.id !== id));
+    try {
+      if (deletePIT) await deletePIT(id);
+    } catch (err) {
+      console.error('PIT delete error:', err);
+    }
   };
 
   const updateProgress = (id, value) => {
@@ -314,10 +336,9 @@ export default function PITPage({ pits, setPits }) {
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1">Title *</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Title (optional)</label>
                 <input
                   type="text"
-                  required
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Project title..."
@@ -327,14 +348,17 @@ export default function PITPage({ pits, setPits }) {
               <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-slate-700 block mb-1">Subject *</label>
-          <input
-            type="text"
+          <select
             required
             value={form.subject}
             onChange={(e) => setForm({ ...form, subject: e.target.value })}
-            placeholder="e.g. Physics, Literature"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
-          />
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 bg-white"
+          >
+            <option value="" disabled>Select a subject</option>
+            {subjectOptions.map((subject) => (
+              <option key={subject} value={subject}>{subject}</option>
+            ))}
+          </select>
         </div>
 
                 <div>

@@ -12,7 +12,21 @@ import {
   X,
   AlertCircle,
 } from 'lucide-react';
-import { subjectColors } from '../data/initialData';
+const subjectColors = {
+  default: "#3b82f6"
+};
+
+const subjectOptions = [
+  'CpE321-Basic Occuupational Health and Safety',
+  'CpE322-Digital Signal Processing',
+  'CpE323-Microprocessor',
+  'CpE324-CpE Practice and Design 1',
+  'CpE325-CpE laws and Professional Practice',
+  'CpE326-Emerging Technologies in CpE',
+  'ES302-Engineering Management',
+  'PICPE-Philippine Indigenous Communities and Peace Education',
+  'EC321-CpE Elective Course 2',
+];
 
 const priorityConfig = {
   high: { label: 'High', bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
@@ -39,7 +53,7 @@ const emptyForm = {
   description: '',
 };
 
-export default function AssignmentsPage({ assignments, setAssignments }) {
+export default function AssignmentsPage({ assignments, setAssignments, addAssignment, updateAssignment, deleteAssignment }) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterSubject, setFilterSubject] = useState('all');
@@ -57,24 +71,27 @@ export default function AssignmentsPage({ assignments, setAssignments }) {
     })
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      setAssignments((prev) =>
-        prev.map((a) =>
-          a.id === editingId
-            ? { ...a, ...form, color: subjectColors[form.subject] || '#3b82f6' }
-            : a
-        )
-      );
-    } else {
-      const newAssignment = {
-        ...form,
-        id: Date.now(),
-        color: subjectColors[form.subject] || '#3b82f6',
-      };
-      setAssignments((prev) => [...prev, newAssignment]);
+    const colored = { ...form, color: subjectColors[form.subject] || '#3b82f6', createdAt: new Date() };
+    try {
+      if (editingId) {
+        setAssignments((prev) =>
+          prev.map((a) =>
+            a.id === editingId
+              ? { ...a, ...colored }
+              : a
+          )
+        );
+        if (updateAssignment) await updateAssignment(editingId, colored);
+      } else {
+        setAssignments((prev) => [...prev, { ...colored, id: Date.now() }]);
+        if (addAssignment) await addAssignment(colored);
+      }
+    } catch (err) {
+      console.error('Assignments write error:', err);
     }
+
     setShowModal(false);
     setForm(emptyForm);
     setEditingId(null);
@@ -93,8 +110,13 @@ export default function AssignmentsPage({ assignments, setAssignments }) {
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     setAssignments((prev) => prev.filter((a) => a.id !== id));
+    try {
+      if (deleteAssignment) await deleteAssignment(id);
+    } catch (err) {
+      console.error('Assignments delete error:', err);
+    }
   };
 
   const toggleStatus = (id) => {
@@ -286,10 +308,9 @@ export default function AssignmentsPage({ assignments, setAssignments }) {
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1">Title *</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Title (optional)</label>
                 <input
                   type="text"
-                  required
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Assignment title..."
@@ -299,14 +320,17 @@ export default function AssignmentsPage({ assignments, setAssignments }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium text-slate-700 block mb-1">Subject *</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    placeholder="e.g. Mathematics, English"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                  >
+                    <option value="" disabled>Select a subject</option>
+                    {subjectOptions.map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700 block mb-1">Due Date *</label>
