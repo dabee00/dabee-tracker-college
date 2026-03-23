@@ -135,7 +135,6 @@ export default function PITPage({ pits, setPits, addPIT, updatePIT, deletePIT })
               <Lightbulb className="w-7 h-7 text-purple-600" />
               Performance Innovative Tasks
             </h1>
-            <p className="text-slate-500 text-sm mt-0.5">Manage your creative and performance-based outputs</p>
           </div>
           <button
             onClick={() => { setShowModal(true); setEditingId(null); setForm(emptyForm); }}

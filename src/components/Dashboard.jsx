@@ -47,8 +47,8 @@ export default function Dashboard({ assignments, pits, quizzes, setActivePage })
   const pending = assignments.filter((a) => a.status !== 'completed');
   const completed = assignments.filter((a) => a.status === 'completed');
   const upcomingQuizzes = quizzes
-    .filter((q) => new Date(q.date) >= today)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .filter((q) => q.date && !Number.isNaN(new Date(q.date).getTime()) && new Date(q.date) >= today)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 4);
   const activePits = pits.filter((p) => p.status !== 'completed').slice(0, 3);
   const recentAssignments = pending
@@ -221,7 +221,7 @@ export default function Dashboard({ assignments, pits, quizzes, setActivePage })
                         <p className="text-sm font-semibold text-slate-700">{pit.title}</p>
                       </div>
                       <span className="text-xs text-slate-500 flex-shrink-0">
-                        Due {format(new Date(pit.dueDate), 'MMM d')}
+                        {pit.dueDate && !Number.isNaN(new Date(pit.dueDate).getTime()) ? `Due ${format(new Date(pit.dueDate), 'MMM d')}` : 'No due date'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mb-3 ml-4 line-clamp-1">{pit.description}</p>
@@ -271,15 +271,18 @@ export default function Dashboard({ assignments, pits, quizzes, setActivePage })
                 {upcomingQuizzes.map((quiz) => {
                   const quizType = quizTypeConfig[quiz.type];
                   const due = getDueDateLabel(quiz.date);
+                  const isValidDate = quiz.date && !Number.isNaN(new Date(quiz.date).getTime());
                   return (
                     <div key={quiz.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                      <div
-                        className="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0 text-white font-bold"
-                        style={{ backgroundColor: quiz.color }}
-                      >
-                        <span className="text-xs leading-none">{format(new Date(quiz.date), 'MMM').toUpperCase()}</span>
-                        <span className="text-sm leading-none">{format(new Date(quiz.date), 'd')}</span>
-                      </div>
+                      {isValidDate && (
+                        <div
+                          className="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0 text-white font-bold"
+                          style={{ backgroundColor: quiz.color }}
+                        >
+                          <span className="text-xs leading-none">{format(new Date(quiz.date), 'MMM').toUpperCase()}</span>
+                          <span className="text-sm leading-none">{format(new Date(quiz.date), 'd')}</span>
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-700 leading-tight truncate">{quiz.title}</p>
                         <div className="flex items-center gap-1.5 mt-1">
@@ -333,6 +336,7 @@ export default function Dashboard({ assignments, pits, quizzes, setActivePage })
                   <p className="text-xs text-blue-200">
                     <span className="text-white font-semibold">
                       {assignments.filter((a) => {
+                        if (!a.dueDate || Number.isNaN(new Date(a.dueDate).getTime())) return false;
                         const d = differenceInDays(new Date(a.dueDate), new Date());
                         return d >= 0 && d <= 3 && a.status !== 'completed';
                       }).length}

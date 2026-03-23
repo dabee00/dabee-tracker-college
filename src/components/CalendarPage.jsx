@@ -78,7 +78,13 @@ export default function CalendarPage({ quizzes, setQuizzes, addQuiz, updateQuiz,
   }
 
   const getQuizzesForDate = (date) =>
-    quizzes.filter((q) => isSameDay(parseISO(q.date), date));
+    quizzes.filter((q) => {
+      try {
+        return q.date && isSameDay(parseISO(q.date), date);
+      } catch {
+        return false;
+      }
+    });
 
   const selectedQuizzes = selectedDate ? getQuizzesForDate(selectedDate) : [];
 
@@ -152,8 +158,8 @@ export default function CalendarPage({ quizzes, setQuizzes, addQuiz, updateQuiz,
   };
 
   const upcomingQuizzes = quizzes
-    .filter((q) => new Date(q.date) >= new Date())
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .filter((q) => q.date && !Number.isNaN(new Date(q.date).getTime()) && new Date(q.date) >= new Date())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 8);
 
   return (
@@ -166,7 +172,6 @@ export default function CalendarPage({ quizzes, setQuizzes, addQuiz, updateQuiz,
               <Calendar className="w-7 h-7 text-green-600" />
               Quiz Calendar
             </h1>
-            <p className="text-slate-500 text-sm mt-0.5">Schedule and track your quizzes and exams</p>
           </div>
           <button
             onClick={() => {
